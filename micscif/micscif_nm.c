@@ -1336,11 +1336,16 @@ int micscif_disconnect_node(uint32_t node_id, uint8_t *nodemask, enum disconn_ty
 	int ret;
 	uint64_t msg_cnt = 0;
 	uint32_t i = 0;
-	mic_ctx_t *mic_ctx = get_per_dev_ctx(node_id - 1);
+	mic_ctx_t *mic_ctx = 0;
 	struct list_head node_list;
 	uint32_t node;
 
-	if (!node_id || !mic_ctx)
+	if (!node_id)
+		return -EINVAL;
+
+	mic_ctx = get_per_dev_ctx(node_id - 1);
+
+	if (!mic_ctx)
 		return -EINVAL;
 
 	switch(type) {

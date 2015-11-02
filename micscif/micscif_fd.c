@@ -454,13 +454,13 @@ vwriteto_err:
 		}
 		nodeIDs.len = scif_get_nodeIDs(nodes, entries, &self);
 
-		if (copy_to_user(((struct scifioctl_nodeIDs *)argp)->nodes,
+		if (copy_to_user(nodeIDs.nodes,
 				nodes, sizeof(uint16_t) * entries)) {
 			err = -EFAULT;
 			goto getnodes_err1;
 		}
 
-		if (copy_to_user(((struct scifioctl_nodeIDs *)argp)->self,
+		if (copy_to_user(nodeIDs.self,
 				&self, sizeof(uint16_t))) {
 			err = -EFAULT;
 			goto getnodes_err1;

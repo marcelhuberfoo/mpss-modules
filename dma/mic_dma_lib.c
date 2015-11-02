@@ -671,7 +671,7 @@ free_dma_channel(struct dma_channel *chan)
 }
 EXPORT_SYMBOL(free_dma_channel);
 
-__always_inline uint32_t
+static __always_inline uint32_t
 get_dma_tail_pointer(struct dma_channel *chan)
 {
 	struct mic_dma_device *dma_dev;
