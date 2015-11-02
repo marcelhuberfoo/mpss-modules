@@ -61,14 +61,14 @@ kmodincludedir = $(realpath $(KERNEL_SRC))/include/modules
 # $(ARCH) it should support
 export MIC_CARD_ARCH := k1om
 
-.PHONY: all install modules
+.PHONY: all install modules clean
 .PHONY: modules_install conf_install dev_install kdev_install
 
 all: modules
 
 install: modules_install conf_install kdev_install
 
-modules modules_install: %:
+modules modules_install clean: %:
 	$(MAKE) -C $(KERNEL_SRC) M=$(CURDIR) $* \
 		INSTALL_MOD_PATH=$(DESTDIR)
 
