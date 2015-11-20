@@ -245,7 +245,7 @@ spm_ioctl(struct inode *in, struct file *f, unsigned int cmd, unsigned long arg)
 static long
 spm_unlocked_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 {
-	return (long) spm_ioctl(f->f_dentry->d_inode, f, cmd, arg);
+	return (long) spm_ioctl(file_inode(f), f, cmd, arg);
 }
 
 static int

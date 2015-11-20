@@ -139,7 +139,7 @@ static int micscif_ioctl(struct inode *in, struct file *f,
 static long micscif_unlocked_ioctl(struct file *f,
 	unsigned int cmd, unsigned long arg)
 {
-	return (long) micscif_ioctl(f->f_dentry->d_inode, f, cmd, arg);
+	return (long) micscif_ioctl(file_inode(f), f, cmd, arg);
 }
 
 static int micscif_release(struct inode *in, struct file *f)
