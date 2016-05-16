@@ -205,17 +205,18 @@ int vhost_zerocopy_signal_used(struct vhost_virtqueue *vq);
 				eventfd_signal((vq)->error_ctx, 1);\
 	} while (0)
 
-#ifndef __rcu_dereference_index_check
-#define __rcu_dereference_index_check(p, c) \
-	({ \
-	 typeof(p) _________p1 = ACCESS_ONCE(p); \
-	 rcu_lockdep_assert(c, \
-		 "suspicious rcu_dereference_index_check()" \
-		 " usage"); \
-	 smp_read_barrier_depends(); \
-	 (_________p1); \
-	 })
-#endif
+////rcu_lockdep_assert is no longer functional, from what I see.
+// #ifndef __rcu_dereference_index_check
+// #define __rcu_dereference_index_check(p, c) \
+// 	({ \
+// 	 typeof(p) _________p1 = ACCESS_ONCE(p); \
+// 	 rcu_lockdep_assert(c, \
+// 		 "suspicious rcu_dereference_index_check()" \
+// 		 " usage"); \
+// 	 smp_read_barrier_depends(); \
+// 	 (_________p1); \
+// 	 })
+// #endif
 
 enum {
 	VHOST_FEATURES = (1ULL << VIRTIO_F_NOTIFY_ON_EMPTY) |
@@ -238,7 +239,7 @@ static inline int vhost_has_feature(struct vhost_dev *dev, int bit)
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(4,2,0))
 	unsigned acked_features = rcu_dereference_index_check(dev->acked_features, rcu_read_lock_held());
 #else
-	unsigned acked_features = __rcu_dereference_index_check(dev->acked_features, rcu_read_lock_held());
+	unsigned acked_features = smp_load_acquire(&(dev->acked_features));
 #endif
 #endif
 	return acked_features & (1 << bit);
