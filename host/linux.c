@@ -147,7 +147,7 @@ static ssize_t
 mic_read(struct file * filp, char __user *buf,
 		size_t count, loff_t *pos)
 {
-	dev_t dev = file_inode(filp)>i_rdev;
+	dev_t dev = file_inode(filp)->i_rdev;
 	if (MINOR(dev) == 2)
 		return mic_psmi_read(filp, buf, count, pos);
 
@@ -160,7 +160,7 @@ mic_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	dev_t dev;
 	int status = 0;
 
-	dev = file_inode(filp)>i_rdev;
+	dev = file_inode(filp)->i_rdev;
 	if (MINOR(dev) == 1)
 		return scif_process_ioctl(filp, cmd, arg);
 
