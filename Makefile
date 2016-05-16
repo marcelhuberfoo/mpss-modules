@@ -1,4 +1,4 @@
-# Copyright 2010-2013 Intel Corporation.
+# Copyright 2010-2016 Intel Corporation.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2,
@@ -59,7 +59,7 @@ kmodincludedir = $(realpath $(KERNEL_SRC))/include/modules
 
 # If building the host's driver for a MIC co-processor card, which card
 # $(ARCH) it should support
-export MIC_CARD_ARCH := k1om
+export MIC_CARD_ARCH
 
 .PHONY: all install modules
 .PHONY: modules_install conf_install dev_install kdev_install

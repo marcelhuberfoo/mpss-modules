@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2013 Intel Corporation.
+ * Copyright 2010-2016 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -61,7 +61,6 @@ static struct dentry *mic_debug = NULL;
 
 #define DEBUG_LEN 10
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0))
 static int
 scif_ep_show(struct seq_file *m, void *data)
 {
@@ -136,6 +135,8 @@ struct file_operations scif_ep_fops = {
 	.llseek		= seq_lseek,
         .release 	= single_release,
 };
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0))
 
 static int
 scif_rma_window_show(struct seq_file *m, void *data)
@@ -362,7 +363,7 @@ scif_suspend_show(struct seq_file *m, void *data)
 	uint64_t ret;
 	seq_printf(m, "Removing Nodes mask 0x7\n");
 
-	for (node = 0; node < ms_info.mi_total; node++) {
+	for (node = 1; node < ms_info.mi_total; node++) {
 		ret = micscif_disconnect_node(node, 0 , 1);
 		seq_printf(m, "Node %d requested disconnect. ret = %lld\n",
 			      node, ret);
@@ -405,75 +406,6 @@ struct file_operations scif_cache_limit_fops = {
 };
 
 #else // LINUX VERSION 3.10
-
-static int
-scif_ep_read(char *buf, char **start, off_t offset, int len, int *eof, void *data)
-{
-	struct endpt *ep;
-	struct list_head *pos;
-	unsigned long sflags;
-	int l = 0;
-
-	l += snprintf(buf + l, len - l > 0 ? len - l : 0 ,
-		      "EP Address         State      Port  Peer     Remote Ep Address\n");
-	l += snprintf(buf + l, len - l > 0 ? len - l : 0 ,
-		      "=================================================================\n");
-	spin_lock_irqsave(&ms_info.mi_eplock, sflags);
-	list_for_each(pos, &ms_info.mi_listen) {
-		ep = list_entry(pos, struct endpt, list);
-		l += snprintf(buf + l, len - l > 0 ? len - l : 0 , "%p %s %6d\n",
-			      ep, scif_ep_states[ep->state], ep->port.port);
-	}
-	spin_unlock_irqrestore(&ms_info.mi_eplock, sflags);
-
-	spin_lock_irqsave(&ms_info.mi_connlock, sflags);
-	list_for_each(pos, &ms_info.mi_connected) {
-		ep = list_entry(pos, struct endpt, list);
-		l += snprintf(buf + l, len - l > 0 ? len - l : 0 , "%p %s %6d %2d:%-6d %p\n",
-			      ep, scif_ep_states[ep->state], ep->port.port, ep->peer.node,
-			      ep->peer.port, (void *)ep->remote_ep);
-	}
-	list_for_each(pos, &ms_info.mi_disconnected) {
-		ep = list_entry(pos, struct endpt, list);
-		l += snprintf(buf + l, len - l > 0 ? len - l : 0 , "%p %s %6d %2d:%-6d %p\n",
-			      ep, scif_ep_states[ep->state], ep->port.port, ep->peer.node,
-			      ep->peer.port, (void *)ep->remote_ep);
-	}
-	spin_unlock_irqrestore(&ms_info.mi_connlock, sflags);
-
-	l += snprintf(buf + l, len - l > 0 ? len - l : 0 ,
-		"EP Address         State      Port  Peer     Remote Ep Address reg_list "
-		"remote_reg_list mmn_list tw_refcount tcw_refcount mi_rma mi_rma_tc "
-		"task_list mic_mmu_notif_cleanup\n");
-	l += snprintf(buf + l, len - l > 0 ? len - l : 0 ,
-		      "=================================================================\n");
-	spin_lock_irqsave(&ms_info.mi_eplock, sflags);
-	list_for_each(pos, &ms_info.mi_zombie) {
-		ep = list_entry(pos, struct endpt, list);
-		l += snprintf(buf + l, len - l > 0 ? len - l : 0 ,
-				"%p %s %6d %2d:%-6d %p %d %d %d %d %d %d %d %d %d\n",
-				ep, scif_ep_states[ep->state], ep->port.port, ep->peer.node,
-				ep->peer.port, (void *)ep->remote_ep,
-				list_empty(&ep->rma_info.reg_list),
-				list_empty(&ep->rma_info.remote_reg_list),
-				list_empty(&ep->rma_info.mmn_list),
-				atomic_read(&ep->rma_info.tw_refcount),
-				atomic_read(&ep->rma_info.tcw_refcount),
-				list_empty(&ms_info.mi_rma),
-				list_empty(&ms_info.mi_rma_tc),
-				list_empty(&ep->rma_info.task_list),
-#ifdef CONFIG_MMU_NOTIFIER
-				list_empty(&ms_info.mi_mmu_notif_cleanup)
-#else
-				-1
-#endif
-			    );
-	}
-	spin_unlock_irqrestore(&ms_info.mi_eplock, sflags);
-
-	*eof = 1;
-	return l;
-}
 
 static int
 scif_rma_window_read(char *buf, char **start, off_t offset, int len, int *eof, void *data)
@@ -698,7 +630,7 @@ scif_suspend(char *buf, char **start, off_t offset, int len, int *eof, void *dat
 		uint64_t ret;
 		l += snprintf(buf + l, len - l > 0 ? len - l : 0,
 			      "Removing Nodes mask 0x7\n");
-		for (node = 0; node < ms_info.mi_total; node++) {
+		for (node = 1; node < ms_info.mi_total; node++) {
 			ret = micscif_disconnect_node(node, 0 , 1);
 			l += snprintf(buf + l, len - l > 0 ? len - l : 0,
 				      "Node %d requested disconnect. ret = %lld\n",
@@ -953,9 +885,10 @@ scif_proc_init(void)
 void
 scif_proc_init(void)
 {
-	struct proc_dir_entry *temp;
+	struct proc_dir_entry *reg_cache_limit_entry;
+	struct proc_dir_entry *ep_entry;
+
 	if ((scif_proc = create_proc_entry("scif", S_IFDIR | S_IRUGO, NULL)) != NULL) {
-		create_proc_read_entry("ep", 0444, scif_proc, scif_ep_read, NULL);
 		create_proc_read_entry("rma_window", 0444, scif_proc, scif_rma_window_read, NULL);
 		create_proc_read_entry("rma_xfer", 0444, scif_proc, scif_rma_xfer_read, NULL);
 		create_proc_read_entry("scif_dev", 0444, scif_proc, scif_dev_info, NULL);
@@ -967,11 +900,16 @@ scif_proc_init(void)
 		create_proc_read_entry("crash", 0444, scif_proc, scif_crash, NULL);
 		create_proc_read_entry("bugon", 0444, scif_proc, scif_bugon, NULL);
 #endif
-		if ((temp = create_proc_entry("reg_cache_limit", S_IFREG | S_IRUGO | S_IWUGO, scif_proc))) {
-			temp->write_proc = scif_set_reg_cache_limit;
-			temp->read_proc = scif_get_reg_cache_limit;
-			temp->data = NULL;
+		if ((reg_cache_limit_entry = create_proc_entry("reg_cache_limit", S_IFREG | S_IRUGO | S_IWUGO, scif_proc))) {
+			reg_cache_limit_entry->write_proc = scif_set_reg_cache_limit;
+			reg_cache_limit_entry->read_proc = scif_get_reg_cache_limit;
+			reg_cache_limit_entry->data = NULL;
 		}
+		if ((ep_entry = create_proc_entry("ep", S_IFREG | S_IRUGO | S_IWUGO, scif_proc))) {
+			ep_entry->proc_fops = &scif_ep_fops;
+		}		
+
+
 	}
 }
 #endif // LINUX VERSION

@@ -1,6 +1,6 @@
 
 /*
- * Copyright 2010-2013 Intel Corporation.
+ * Copyright 2010-2016 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -1030,8 +1030,14 @@ micvnet_init_netdev(struct micvnet_info *vnet_info)
 	struct net_device *dev_vnet;
 	int ret = 0;
 
-	if ((dev_vnet = (struct net_device *)alloc_netdev(sizeof(struct micvnet_info), "mic%d", 
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0))
+	if ((dev_vnet = (struct net_device *)alloc_netdev(sizeof(struct micvnet_info), "mic%d",
 					   NET_NAME_UNKNOWN, micvnet_setup)) == NULL) {
+#else
+	if ((dev_vnet = (struct net_device *)alloc_netdev(sizeof(struct micvnet_info), "mic%d", 
+					   micvnet_setup)) == NULL) {
+#endif
 		printk(KERN_ERR "%s: alloc_netdev failed\n", __func__);
 		return -ENOMEM;
 	}

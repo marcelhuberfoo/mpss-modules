@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2013 Intel Corporation.
+ * Copyright 2010-2016 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -671,7 +671,7 @@ free_dma_channel(struct dma_channel *chan)
 }
 EXPORT_SYMBOL(free_dma_channel);
 
-__always_inline uint32_t
+static __always_inline uint32_t
 get_dma_tail_pointer(struct dma_channel *chan)
 {
 	struct mic_dma_device *dma_dev;
@@ -1360,9 +1360,16 @@ module_exit(mic_dma_uninit);
 static int
 mic_dma_proc_ring_show(struct seq_file *m, void *data)
 {
-	struct mic_dma_ctx_t *dma_ctx = data;
-	int i;
+	struct mic_dma_ctx_t *dma_ctx = m->private;
+	mic_ctx_t *mic_ctx = get_per_dev_ctx(dma_ctx->device_num - 1);
+	int i, err;
 	struct compl_buf_ring *ring;
+
+	if ((err = micpm_get_reference(mic_ctx, true))) {
+		printk(KERN_ERR "%s %d: unable to get micpm reference: %d\n", 
+				 __func__, __LINE__, err);
+		return err;
+	}
 
 	seq_printf(m, "Intr rings\n");
 	seq_printf(m, "%-10s%-12s%-12s%-12s%-25s%-18s%-25s\n",
@@ -1389,23 +1396,31 @@ mic_dma_proc_ring_show(struct seq_file *m, void *data)
 		seq_printf(m, "%-#10x%-#12llx\n",
 			       i, dma_ctx->dma_channels[i].next_write_index);
 	}
+	micpm_put_reference(mic_ctx);
 	return 0;
 }
 
 static int
 mic_dma_proc_ring_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, mic_dma_proc_ring_show, NULL);
+	return single_open(file, mic_dma_proc_ring_show, PDE_DATA(inode));
 }
 
 static int
 mic_dma_proc_reg_show(struct seq_file *m, void *data)
 {
-	int i, j, chan_num, size, dtpr;
-	struct mic_dma_ctx_t *dma_ctx = data;
+	int i, j, chan_num, size, dtpr, err;
+	struct mic_dma_ctx_t *dma_ctx = m->private;
+	mic_ctx_t *mic_ctx = get_per_dev_ctx(dma_ctx->device_num - 1);
 	struct mic_dma_device *dma_dev = &dma_ctx->dma_dev;
 	struct dma_channel *curr_chan;
 	union md_mic_dma_desc desc;
+
+	if ((err = micpm_get_reference(mic_ctx, true))) {
+		printk(KERN_ERR "%s %d: unable to get micpm reference: %d\n", 
+				 __func__, __LINE__, err);
+		return err;
+	}
 
 	seq_printf(m, "========================================"
 				"=======================================\n");
@@ -1532,13 +1547,15 @@ mic_dma_proc_reg_show(struct seq_file *m, void *data)
 			seq_printf(m, "DSTAT_WB = 0x%x\n",
 				*((uint32_t*)curr_chan->chan->dstat_wb_loc));
 	}
+	micpm_put_reference(mic_ctx);
+
 	return 0;
 }
 
 static int
 mic_dma_proc_reg_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, mic_dma_proc_reg_show, NULL);
+	return single_open(file, mic_dma_proc_reg_show, PDE_DATA(inode));
 }
 
 struct file_operations micdma_ring_fops = {
@@ -1561,11 +1578,11 @@ mic_dma_proc_init(struct mic_dma_ctx_t *dma_ctx)
 	char name[64];
 
 	snprintf(name, 63, "%s%d", proc_dma_ring, dma_ctx->device_num);
-	if (!proc_create(name,  S_IFREG | S_IRUGO, NULL, &micdma_ring_fops))
+	if (!proc_create_data(name,  S_IFREG | S_IRUGO, NULL, &micdma_ring_fops, dma_ctx))
 		printk("micdma: unable to register /proc/%s\n", name);
 
 	snprintf(name, 63, "%s%d", proc_dma_reg, dma_ctx->device_num);
-	if (!proc_create(name, S_IFREG | S_IRUGO, NULL, &micdma_reg_fops))
+	if (!proc_create_data(name, S_IFREG | S_IRUGO, NULL, &micdma_reg_fops, dma_ctx))
 		printk("micdma: unable to register /proc/%s\n", name);
 
 }

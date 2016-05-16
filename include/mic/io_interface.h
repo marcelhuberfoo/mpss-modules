@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2013 Intel Corporation.
+ * Copyright 2010-2016 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -37,6 +37,16 @@
 
 #ifndef __IO_INTERFACE_H__
 #define __IO_INTERFACE_H__
+
+/*
+ * The host driver exports sysfs entries in
+ *	/sys/class/mic/micX/
+ * The "/sys/class/mic/micX/state" entry reflects the state of the
+ * card as it transitions from hardware reset through booting an image
+ *
+ * All the other entries have valid values when the state entry is either
+ * "ready" or "online"
+ */
 
 /*
  * -----------------------------------------
@@ -81,6 +91,9 @@ typedef enum {
  * \param len				uos escape opecode
  *
  * This structure is used for IOCTL_FLASHCMD.
+ *
+ * This IOCTL can only be issued when /sys/class/mic/mic0/state returns "online"
+ * after it has been set to "boot:flash"
  */
 struct ctrlioctl_flashcmd {
 	uint32_t brdnum;

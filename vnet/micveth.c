@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2013 Intel Corporation.
+ * Copyright 2010-2016 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -400,7 +400,11 @@ micveth_probe_int(micveth_info_t *veth_info, mic_ctx_t *mic_ctx)
 	// Set the current sk_buff allocation size
 	veth_info->vi_skb_mtu = MICVETH_MAX_PACKET_SIZE + 32;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 17, 0)
 	if ((dev_veth = alloc_netdev(sizeof(micveth_info_t), "mic%d", micveth_setup)) == NULL) {
+#else
+	if ((dev_veth = alloc_netdev(sizeof(micveth_info_t), "mic%d", NET_NAME_UNKNOWN, micveth_setup)) == NULL) {
+#endif
 		return -ENOMEM;
 	}
 

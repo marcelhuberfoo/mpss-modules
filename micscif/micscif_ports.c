@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2013 Intel Corporation.
+ * Copyright 2010-2016 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -327,7 +327,7 @@ get_scif_port(void)
 		init_scif_array();
 
 	spin_lock(&port_lock);
-	if (first_free == PORTS_ARRAY_SIZE) {	/* Pool is empty */
+	if (first_free >= PORTS_ARRAY_SIZE) {	/* Pool is empty */
 		port = 0;
 		port_err++;
 		goto out;

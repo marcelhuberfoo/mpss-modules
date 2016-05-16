@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2013 Intel Corporation.
+ * Copyright 2010-2016 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -245,7 +245,7 @@ spm_ioctl(struct inode *in, struct file *f, unsigned int cmd, unsigned long arg)
 static long
 spm_unlocked_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 {
-	return (long) spm_ioctl(file_inode(f), f, cmd, arg);
+	return (long) spm_ioctl(f->f_path.dentry->d_inode, f, cmd, arg);
 }
 
 static int
