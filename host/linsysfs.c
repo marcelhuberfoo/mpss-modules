@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2013 Intel Corporation.
+ * Copyright 2010-2016 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -284,7 +284,7 @@ set_micstate(struct device *dev, struct device_attribute *attr, const char *buf,
 		mutex_lock(&mic_ctx->state_lock);
 		if (mic_ctx->state == MIC_READY) {
 			mutex_unlock(&mic_ctx->state_lock);
-			return -EACCES;
+			return -EINVAL;
 		}
 
 		mutex_unlock(&mic_ctx->state_lock);

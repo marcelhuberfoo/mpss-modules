@@ -268,7 +268,11 @@ int poll_schedule_timeout(struct poll_wqueues *pwq, int state,
 	 * this problem doesn't exist for the first iteration as
 	 * add_wait_queue() has full barrier semantics.
 	 */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0))
+	smp_store_mb(pwq->triggered, 0);
+#else
 	set_mb(pwq->triggered, 0);
+#endif
 
 	return rc;
 }

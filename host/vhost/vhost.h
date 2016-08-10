@@ -205,6 +205,18 @@ int vhost_zerocopy_signal_used(struct vhost_virtqueue *vq);
 				eventfd_signal((vq)->error_ctx, 1);\
 	} while (0)
 
+#ifndef __rcu_dereference_index_check
+#define __rcu_dereference_index_check(p, c) \
+	({ \
+	 typeof(p) _________p1 = ACCESS_ONCE(p); \
+	 rcu_lockdep_assert(c, \
+		 "suspicious rcu_dereference_index_check()" \
+		 " usage"); \
+	 smp_read_barrier_depends(); \
+	 (_________p1); \
+	 })
+#endif
+
 enum {
 	VHOST_FEATURES = (1ULL << VIRTIO_F_NOTIFY_ON_EMPTY) |
 			 (1ULL << VIRTIO_RING_F_INDIRECT_DESC) |
@@ -223,9 +235,12 @@ static inline int vhost_has_feature(struct vhost_dev *dev, int bit)
 	unsigned acked_features = rcu_dereference(dev->acked_features);
 #endif
 #else
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4,2,0))
 	unsigned acked_features = rcu_dereference_index_check(dev->acked_features, rcu_read_lock_held());
+#else
+	unsigned acked_features = __rcu_dereference_index_check(dev->acked_features, rcu_read_lock_held());
 #endif
-
+#endif
 	return acked_features & (1 << bit);
 }
 
