@@ -1,7 +1,7 @@
-Intel MPSS 3.7.1 for Linux
+Intel MPSS 3.8.2 for Linux
 ==========================
 
-This repository contains Intel MPSS 3.7.1 modules. The source is patched to work
+This repository contains Intel MPSS 3.8.2 modules. The source is patched to work
 with recent Linux kernel versions and are tested on an Ubuntu 14.04.
 
 Building and Installing

@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 Intel Corporation.
+ * Copyright 2010-2017 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -1591,8 +1591,13 @@ adapter_init_device(mic_ctx_t *mic_ctx)
 	mic_psmi_init(mic_ctx);
 	mic_ctx->dma_handle = NULL;
 	mic_ctx->sdbic1 = 0;
+    // To avoid hazard on Windows, sku_build_table is done on DriverEntry
+	sku_build_table();
+	device_id = mic_ctx->bi_pdev->device;
+	sku_find(mic_ctx, device_id);
+    // To avoid hazard on Windows, sku_destroy_table is done on MicUnload
+	sku_destroy_table();
 
-	sku_build_table(mic_ctx);
 	/* Determine the amount of compensation that needs to be applied to MIC's ETC timer */
 	calculate_etc_compensation(mic_ctx);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 Intel Corporation.
+ * Copyright 2010-2017 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -476,7 +476,7 @@ int sku_create_node(uint32_t fuserev_low,
 		uint32_t mem_freq, char *sku_name,
 		sku_info_t ** newnode);
 
-void sku_build_table(mic_ctx_t *mic_ctx);
+int sku_build_table(void);
 void sku_destroy_table(void);
 int sku_find(mic_ctx_t *mic_ctx, uint32_t device_id);
 

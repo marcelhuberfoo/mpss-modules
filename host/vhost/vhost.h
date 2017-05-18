@@ -206,6 +206,7 @@ int vhost_zerocopy_signal_used(struct vhost_virtqueue *vq);
 	} while (0)
 
 #ifndef __rcu_dereference_index_check
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4,3,0))
 #define __rcu_dereference_index_check(p, c) \
 	({ \
 	 typeof(p) _________p1 = ACCESS_ONCE(p); \
@@ -215,6 +216,17 @@ int vhost_zerocopy_signal_used(struct vhost_virtqueue *vq);
 	 smp_read_barrier_depends(); \
 	 (_________p1); \
 	 })
+#else
+#define __rcu_dereference_index_check(p, c) \
+	({ \
+	 typeof(p) _________p1 = ACCESS_ONCE(p); \
+	 RCU_LOCKDEP_WARN(c, \
+		 "suspicious rcu_dereference_index_check()" \
+		 " usage"); \
+	 smp_read_barrier_depends(); \
+	 (_________p1); \
+	})
+#endif
 #endif
 
 enum {

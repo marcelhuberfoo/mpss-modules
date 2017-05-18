@@ -844,10 +844,12 @@ static int __init init(void)
 static void __exit fini(void)
 {
 	bd_info_t *bd_info = virtblk_mic_data.dd_bi[0];
+	struct mic_virtblk *mic_virtblk = (struct mic_virtblk *)bd_info->bi_virtio;
 
 	unregister_blkdev(major, "virtblk");
-	virtblk_remove(((struct mic_virtblk *)bd_info->bi_virtio)->vdev);
-	kfree(((struct mic_virtblk *)bd_info->bi_virtio)->vdev);
+	virtblk_remove(mic_virtblk->vdev);
+	iounmap(mic_virtblk->vb_shared);
+	kfree(mic_virtblk->vdev);
 	kfree(bd_info->bi_virtio);
 	kfree(bd_info);
 }
