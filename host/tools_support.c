@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 Intel Corporation.
+ * Copyright 2010-2017 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -64,7 +64,11 @@ mic_unpin_user_pages(struct page **pages, uint32_t nf_pages)
 		for (j = 0; j < nf_pages; j++) {
 			if (pages[j]) {
 				SetPageDirty(pages[j]);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,6,0)
+				put_page(pages[j]);
+#else
 				page_cache_release(pages[j]);
+#endif
 			}
 		}
 		kfree(pages);
@@ -89,8 +93,19 @@ mic_pin_user_pages (void *data, struct page **pages, uint32_t len, int32_t *nf_p
 
 	// pin the user pages; use semaphores on linux for doing the same
 	down_read(&current->mm->mmap_sem);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,10,0)
+	*nf_pages = (int32_t)get_user_pages_remote(current, current->mm,
+			  (uint64_t)data, nr_pages, FOLL_WRITE|FOLL_FORCE, pages, NULL, NULL);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0)
+	*nf_pages = (int32_t)get_user_pages_remote(current, current->mm,
+			  (uint64_t)data, nr_pages, FOLL_WRITE|FOLL_FORCE, pages, NULL);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,6,0)
+	*nf_pages = (int32_t)get_user_pages_remote(current, current->mm,
+			  (uint64_t)data, nr_pages, PROT_WRITE, 1, pages, NULL);
+#else
 	*nf_pages = (int32_t)get_user_pages(current, current->mm, (uint64_t)data,
 			  nr_pages, PROT_WRITE, 1, pages, NULL);
+#endif
 	up_read(&current->mm->mmap_sem);
 
 	// compare if the no of final pages is equal to no of requested pages
@@ -660,196 +675,319 @@ cleanup:
 }
 
 
-void
-sku_build_table(mic_ctx_t *mic_ctx)
+int
+sku_build_table(void)
 {
 	int i = 0;
-	uint32_t device_id;
 	sku_info_t *newnode = NULL;
 
 	for ( i = 0; i < MAX_DEV_IDS; i++)
 		INIT_LIST_HEAD(&mic_data.sku_table[i]);
 
 	/*2250*/
-	sku_create_node(0, 1, SKU_LOW_MEM, FREQ_2P4, "A0PO-SKU1", &newnode);
+	if (sku_create_node(0, 1, SKU_LOW_MEM, FREQ_2P4, "A0PO-SKU1", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[0]);
-	sku_create_node(0, 1, SKU_HIGH_MEM, FREQ_2P4, "A0PO-SKU1", &newnode);
+
+	if (sku_create_node(0, 1, SKU_HIGH_MEM, FREQ_2P4, "A0PO-SKU1", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[0]);
-	sku_create_node(2, 3, SKU_LOW_MEM, FREQ_4P5,"ES1-SKU2", &newnode);
+
+	if (sku_create_node(2, 3, SKU_LOW_MEM, FREQ_4P5,"ES1-SKU2", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[0]);
-	sku_create_node(2, 3, SKU_HIGH_MEM, FREQ_4P5, "ES1-SKU2", &newnode);
+
+	if (sku_create_node(2, 3, SKU_HIGH_MEM, FREQ_4P5, "ES1-SKU2", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[0]);
-	sku_create_node(4, 49, SKU_HIGH_MEM, FREQ_4P5, "ES1B-SKU2", &newnode);
+
+	if (sku_create_node(4, 49, SKU_HIGH_MEM, FREQ_4P5, "ES1B-SKU2", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[0]);
-	sku_create_node(50, 100, SKU_HIGH_MEM, FREQ_4P5, "B0PO-SKU2", &newnode);
+
+	if (sku_create_node(50, 100, SKU_HIGH_MEM, FREQ_4P5, "B0PO-SKU2", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[0]);
-	sku_create_node(101, 150, SKU_HIGH_MEM, FREQ_5P0, "ES2-P1640", &newnode);
+
+	if (sku_create_node(101, 150, SKU_HIGH_MEM, FREQ_5P0, "ES2-P1640", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[0]);
-	sku_create_node(153, 154, SKU_HIGH_MEM, FREQ_5P0, "B1PO-5110P", &newnode);
+
+	if (sku_create_node(153, 154, SKU_HIGH_MEM, FREQ_5P0, "B1PO-5110P", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[0]);
-	sku_create_node(151, 152, SKU_HIGH_MEM, FREQ_5P0, "B1PO-P1640/D1650", &newnode);
+
+	if (sku_create_node(151, 152, SKU_HIGH_MEM, FREQ_5P0, "B1PO-P1640/D1650", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[0]);
-	sku_create_node(156, 156, SKU_HIGH_MEM, FREQ_5P0, "B1PRQ-5110P", &newnode);
+
+	if (sku_create_node(156, 156, SKU_HIGH_MEM, FREQ_5P0, "B1PRQ-5110P", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[0]);
-	sku_create_node(155, 155, SKU_HIGH_MEM, FREQ_5P0, "B1QS-5110P", &newnode);
+
+	if (sku_create_node(155, 155, SKU_HIGH_MEM, FREQ_5P0, "B1QS-5110P", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[0]);
-	sku_create_node(157, 157, SKU_HIGH_MEM, FREQ_5P0, "B1PRQ-5110P", &newnode);
+
+	if (sku_create_node(157, 157, SKU_HIGH_MEM, FREQ_5P0, "B1PRQ-5110P", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[0]);
-	sku_create_node(158, 250, SKU_HIGH_MEM, FREQ_5P0, "B1PRQ-5110P/5120D", &newnode);
+
+	if (sku_create_node(158, 250, SKU_HIGH_MEM, FREQ_5P0, "B1PRQ-5110P/5120D", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[0]);
-	sku_create_node(251, 253, SKU_HIGH_MEM, FREQ_5P0, "C0-5110P", &newnode);
+
+	if (sku_create_node(251, 253, SKU_HIGH_MEM, FREQ_5P0, "C0-5110P", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[0]);
-	sku_create_node(254, 255, SKU_HIGH_MEM, FREQ_5P0, "C0QS-5110P", &newnode);
+
+	if (sku_create_node(254, 255, SKU_HIGH_MEM, FREQ_5P0, "C0QS-5110P", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[0]);
-	sku_create_node(251, 253, SKU_HIGH_MEM, FREQ_5P5, "C0-5120D", &newnode);
+
+	if (sku_create_node(251, 253, SKU_HIGH_MEM, FREQ_5P5, "C0-5120D", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[0]);
-	sku_create_node(254, 255, SKU_HIGH_MEM, FREQ_5P5, "C0QS-5120D", &newnode);
+
+	if (sku_create_node(254, 255, SKU_HIGH_MEM, FREQ_5P5, "C0QS-5120D", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[0]);
-	sku_create_node(256, 350, SKU_HIGH_MEM, FREQ_5P0, "C0PRQ-5110P/5140P", &newnode);
+
+	if (sku_create_node(256, 350, SKU_HIGH_MEM, FREQ_5P0, "C0PRQ-5110P/5140P", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[0]);
-	sku_create_node(256, 350, SKU_HIGH_MEM, FREQ_5P5, "C0PRQ-5120D/5140D", &newnode);
+
+	if (sku_create_node(256, 350, SKU_HIGH_MEM, FREQ_5P5, "C0PRQ-5120D/5140D", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[0]);
 
 	/*2251*/
-	sku_create_node(0, 1, SKU_LOW_MEM, FREQ_2P4, "A0PO-SKU2", &newnode);
+	if (sku_create_node(0, 1, SKU_LOW_MEM, FREQ_2P4, "A0PO-SKU2", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[1]);
-	sku_create_node(0, 1, SKU_HIGH_MEM, FREQ_2P4, "A0PO-SKU2", &newnode);
+
+	if (sku_create_node(0, 1, SKU_HIGH_MEM, FREQ_2P4, "A0PO-SKU2", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[1]);
 
 	/*2252*/
-	sku_create_node(0, 1, SKU_LOW_MEM, FREQ_2P4, "A0PO-SKU3", &newnode);
+	if (sku_create_node(0, 1, SKU_LOW_MEM, FREQ_2P4, "A0PO-SKU3", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[2]);
 
 	/*2253*/
-	sku_create_node(0, 1, SKU_LOW_MEM, FREQ_2P4, "A0PO-SKU4", &newnode);
+	if (sku_create_node(0, 1, SKU_LOW_MEM, FREQ_2P4, "A0PO-SKU4", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[3]);
-	sku_create_node(2, 3, SKU_LOW_MEM, FREQ_2P4, "ES1-SKU5", &newnode);
+
+	if (sku_create_node(2, 3, SKU_LOW_MEM, FREQ_2P4, "ES1-SKU5", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[3]);
-	sku_create_node(4, 49, SKU_LOW_MEM, FREQ_2P4, "ES1B-SKU5", &newnode);
+
+	if (sku_create_node(4, 49, SKU_LOW_MEM, FREQ_2P4, "ES1B-SKU5", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[3]);
-	sku_create_node(50, 100, SKU_LOW_MEM, FREQ_4P5, "B0PO-SKU5", &newnode);
+
+	if (sku_create_node(50, 100, SKU_LOW_MEM, FREQ_4P5, "B0PO-SKU5", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[3]);
 
 	/*2254*/
 
 	/*2255*/
-	sku_create_node(0, 1, SKU_LOW_MEM, FREQ_2P4, "A0PO-SKUX", &newnode);
+	if (sku_create_node(0, 1, SKU_LOW_MEM, FREQ_2P4, "A0PO-SKUX", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[5]);
 
 	/*2256*/
-	sku_create_node(0, 1, SKU_LOW_MEM, FREQ_2P4, "A0PO-SKU5", &newnode);
+	if (sku_create_node(0, 1, SKU_LOW_MEM, FREQ_2P4, "A0PO-SKU5", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[6]);
 
 	/*2257*/
-	sku_create_node(0, 1, SKU_LOW_MEM, FREQ_2P4, "A0PO-SKUZ", &newnode);
+	if (sku_create_node(0, 1, SKU_LOW_MEM, FREQ_2P4, "A0PO-SKUZ", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[7]);
 
 	/*2258*/
-	sku_create_node(2, 3, SKU_LOW_MEM, FREQ_4P5, "ES1-SKU1", &newnode);
+	if (sku_create_node(2, 3, SKU_LOW_MEM, FREQ_4P5, "ES1-SKU1", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[8]);
-	sku_create_node(2, 3, SKU_HIGH_MEM, FREQ_4P5, "ES1-SKU1", &newnode);
+	if (sku_create_node(2, 3, SKU_HIGH_MEM, FREQ_4P5, "ES1-SKU1", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[8]);
-	sku_create_node(4, 49, SKU_HIGH_MEM, FREQ_5P5, "ES1B-SKU1", &newnode);
+	if (sku_create_node(4, 49, SKU_HIGH_MEM, FREQ_5P5, "ES1B-SKU1", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[8]);
-	sku_create_node(50, 100, SKU_HIGH_MEM, FREQ_5P5, "B0PO-SKU1", &newnode);
+	if (sku_create_node(50, 100, SKU_HIGH_MEM, FREQ_5P5, "B0PO-SKU1", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[8]);
 
 	/*2259*/
-	sku_create_node(2, 3, SKU_LOW_MEM, FREQ_4P5, "ES1-SKU3", &newnode);
+	if (sku_create_node(2, 3, SKU_LOW_MEM, FREQ_4P5, "ES1-SKU3", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[9]);
-	sku_create_node(2, 3, SKU_HIGH_MEM, FREQ_4P5, "ES1-SKU3", &newnode);
+
+	if (sku_create_node(2, 3, SKU_HIGH_MEM, FREQ_4P5, "ES1-SKU3", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[9]);
 
 	/*225A*/
-	sku_create_node(2, 3, SKU_LOW_MEM, FREQ_4P5, "ES1-SKU4", &newnode);
+	if (sku_create_node(2, 3, SKU_LOW_MEM, FREQ_4P5, "ES1-SKU4", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[10]);
-	sku_create_node(4, 49, SKU_LOW_MEM, FREQ_5P0, "ES1B-SKU4", &newnode);
+
+	if (sku_create_node(4, 49, SKU_LOW_MEM, FREQ_5P0, "ES1B-SKU4", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[10]);
-	sku_create_node(50, 100, SKU_LOW_MEM, FREQ_5P0, "B0PO-SKU4", &newnode);
+
+	if (sku_create_node(50, 100, SKU_LOW_MEM, FREQ_5P0, "B0PO-SKU4", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[10]);
-	sku_create_node(101, 150, SKU_LOW_MEM, FREQ_5P0, "ES2-SKU4", &newnode);
+
+	if (sku_create_node(101, 150, SKU_LOW_MEM, FREQ_5P0, "ES2-SKU4", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[10]);
 
 	/*225B*/
-	sku_create_node(4, 49, SKU_HIGH_MEM, FREQ_5P5, "ES1B-SKU3cs", &newnode);
+	if (sku_create_node(4, 49, SKU_HIGH_MEM, FREQ_5P5, "ES1B-SKU3cs", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[11]);
-	sku_create_node(4, 49, SKU_LOW_MEM, FREQ_5P5, "ES1B-SKU3ncs", &newnode);
+
+	if (sku_create_node(4, 49, SKU_LOW_MEM, FREQ_5P5, "ES1B-SKU3ncs", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[11]);
-	sku_create_node(50, 100, SKU_HIGH_MEM, FREQ_5P5, "B0PO-SKU3cs", &newnode);
+
+	if (sku_create_node(50, 100, SKU_HIGH_MEM, FREQ_5P5, "B0PO-SKU3cs", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[11]);
-	sku_create_node(50, 100, SKU_LOW_MEM, FREQ_5P5, "B0PO-SKU3ncs", &newnode);
+
+	if (sku_create_node(50, 100, SKU_LOW_MEM, FREQ_5P5, "B0PO-SKU3ncs", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[11]);
 
 	/*225C*/
-	sku_create_node(101, 150, SKU_HIGH_MEM, FREQ_5P5, "ES2-P/A/X 1750", &newnode);
+	if (sku_create_node(101, 150, SKU_HIGH_MEM, FREQ_5P5, "ES2-P/A/X 1750", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[12]);
-	sku_create_node(153, 154, SKU_HIGH_MEM, FREQ_5P5, "B1PO-7110 P/A/X", &newnode);
+
+	if (sku_create_node(153, 154, SKU_HIGH_MEM, FREQ_5P5, "B1PO-7110 P/A/X", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[12]);
-	sku_create_node(155, 155, SKU_HIGH_MEM, FREQ_5P5, "B1QS-7110 P/A/X", &newnode);
+
+	if (sku_create_node(155, 155, SKU_HIGH_MEM, FREQ_5P5, "B1QS-7110 P/A/X", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[12]);
-	sku_create_node(151, 152, SKU_HIGH_MEM, FREQ_5P0, "B1PO-P/A 1750", &newnode);
+
+	if (sku_create_node(151, 152, SKU_HIGH_MEM, FREQ_5P0, "B1PO-P/A 1750", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[12]);
-	sku_create_node(156, 156, SKU_HIGH_MEM, FREQ_5P5, "B1PRQ-7110 P/A/X", &newnode);
+
+	if (sku_create_node(156, 156, SKU_HIGH_MEM, FREQ_5P5, "B1PRQ-7110 P/A/X", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[12]);
-	sku_create_node(157, 157, SKU_HIGH_MEM, FREQ_5P5, "B1PRQ-7110 P/A/X", &newnode);
+
+	if (sku_create_node(157, 157, SKU_HIGH_MEM, FREQ_5P5, "B1PRQ-7110 P/A/X", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[12]);
-	sku_create_node(158, 202, SKU_HIGH_MEM, FREQ_5P5, "B1PRQ-7110 P/X", &newnode);
+
+	if (sku_create_node(158, 202, SKU_HIGH_MEM, FREQ_5P5, "B1PRQ-7110 P/X", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[12]);
-	sku_create_node(203, 250, SKU_HIGH_MEM, FREQ_5P5, "B1PRQ-SE10 P/X", &newnode);
+
+	if (sku_create_node(203, 250, SKU_HIGH_MEM, FREQ_5P5, "B1PRQ-SE10 P/X", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[12]);
-	sku_create_node(251, 253, SKU_HIGH_MEM, FREQ_5P5, "C0-7120 P/A/X/D", &newnode);
+
+	if (sku_create_node(251, 253, SKU_HIGH_MEM, FREQ_5P5, "C0-7120 P/A/X/D", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[12]);
-	sku_create_node(254, 255, SKU_HIGH_MEM, FREQ_5P5, "C0QS-7120 P/A/X/D", &newnode);
+
+	if (sku_create_node(254, 255, SKU_HIGH_MEM, FREQ_5P5, "C0QS-7120 P/A/X/D", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[12]);
-	sku_create_node(256, 350, SKU_HIGH_MEM, FREQ_5P5, "C0PRQ-7120 P/A/X/D", &newnode);
+
+	if (sku_create_node(256, 350, SKU_HIGH_MEM, FREQ_5P5, "C0PRQ-7120 P/A/X/D", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[12]);
 
 	/*225D*/
-	sku_create_node(101, 150, SKU_LOW_MEM, FREQ_5P0, "ES2-P1310", &newnode);
+	if (sku_create_node(101, 150, SKU_LOW_MEM, FREQ_5P0, "ES2-P1310", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[13]);
-	sku_create_node(101, 150, SKU_HIGH_MEM, FREQ_5P0, "ES2-A1330", &newnode);
+
+	if (sku_create_node(101, 150, SKU_HIGH_MEM, FREQ_5P0, "ES2-A1330", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[13]);
-	sku_create_node(153, 154, SKU_LOW_MEM, FREQ_5P0, "B1PO-3110P", &newnode);
+
+	if (sku_create_node(153, 154, SKU_LOW_MEM, FREQ_5P0, "B1PO-3110P", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[13]);
-	sku_create_node(153, 154, SKU_HIGH_MEM, FREQ_5P0, "B1PO-3115A", &newnode);
+
+	if (sku_create_node(153, 154, SKU_HIGH_MEM, FREQ_5P0, "B1PO-3115A", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[13]);
-	sku_create_node(157, 157, SKU_LOW_MEM, FREQ_5P0, "B1PRQ-3110P", &newnode);
+
+	if (sku_create_node(157, 157, SKU_LOW_MEM, FREQ_5P0, "B1PRQ-3110P", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[13]);
-	sku_create_node(157, 157, SKU_HIGH_MEM, FREQ_5P0, "B1PRQ-3115A", &newnode);
+
+	if (sku_create_node(157, 157, SKU_HIGH_MEM, FREQ_5P0, "B1PRQ-3115A", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[13]);
-	sku_create_node(156, 156, SKU_LOW_MEM, FREQ_5P0, "B1PRQ-3110P", &newnode);
+
+	if (sku_create_node(156, 156, SKU_LOW_MEM, FREQ_5P0, "B1PRQ-3110P", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[13]);
-	sku_create_node(156, 156, SKU_HIGH_MEM, FREQ_5P0, "B1PRQ-3115A", &newnode);
+
+	if (sku_create_node(156, 156, SKU_HIGH_MEM, FREQ_5P0, "B1PRQ-3115A", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[13]);
-	sku_create_node(155, 155, SKU_HIGH_MEM, FREQ_5P0, "B1QS-3115A", &newnode);
+
+	if (sku_create_node(155, 155, SKU_HIGH_MEM, FREQ_5P0, "B1QS-3115A", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[13]);
-	sku_create_node(155, 155, SKU_LOW_MEM, FREQ_5P0, "B1QS-3110P", &newnode);
+
+	if (sku_create_node(155, 155, SKU_LOW_MEM, FREQ_5P0, "B1QS-3110P", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[13]);
-	sku_create_node(158, 250, SKU_HIGH_MEM, FREQ_5P0, "B1PRQ-3120P", &newnode);
+
+	if (sku_create_node(158, 250, SKU_HIGH_MEM, FREQ_5P0, "B1PRQ-3120P", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[13]);
-	sku_create_node(251, 253, SKU_HIGH_MEM, FREQ_5P0, "C0-3120 P/A", &newnode);
+
+	if (sku_create_node(251, 253, SKU_HIGH_MEM, FREQ_5P0, "C0-3120 P/A", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[13]);
-	sku_create_node(254, 255, SKU_HIGH_MEM, FREQ_5P0, "C0QS-3120 P/A", &newnode);
+
+	if (sku_create_node(254, 255, SKU_HIGH_MEM, FREQ_5P0, "C0QS-3120 P/A", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[13]);
-	sku_create_node(256, 350, SKU_HIGH_MEM, FREQ_5P0, "C0PRQ-3120/3140 P/A", &newnode);
+
+	if (sku_create_node(256, 350, SKU_HIGH_MEM, FREQ_5P0, "C0PRQ-3120/3140 P/A", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[13]);
 
 	/*225E*/
-	sku_create_node(157, 157, SKU_HIGH_MEM, FREQ_5P0, "B1PRQ-31S1P", &newnode);
-	list_add_tail(&newnode->sku, &mic_data.sku_table[14]);
-	sku_create_node(158, 250, SKU_HIGH_MEM, FREQ_5P0, "B1PRQ-31S1P", &newnode);
-	list_add_tail(&newnode->sku, &mic_data.sku_table[14]);
-	sku_create_node(251, 253, SKU_HIGH_MEM, FREQ_5P0, "C0-31S1P", &newnode);
-	list_add_tail(&newnode->sku, &mic_data.sku_table[14]);
-	sku_create_node(254, 255, SKU_HIGH_MEM, FREQ_5P0, "C0QS-31S1P", &newnode);
-	list_add_tail(&newnode->sku, &mic_data.sku_table[14]);
-	sku_create_node(256, 350, SKU_HIGH_MEM, FREQ_5P0, "C0PRQ-31S1P", &newnode);
+	if (sku_create_node(157, 157, SKU_HIGH_MEM, FREQ_5P0, "B1PRQ-31S1P", &newnode))
+        return -ENOMEM;
 	list_add_tail(&newnode->sku, &mic_data.sku_table[14]);
 
+	if (sku_create_node(158, 250, SKU_HIGH_MEM, FREQ_5P0, "B1PRQ-31S1P", &newnode))
+        return -ENOMEM;
+	list_add_tail(&newnode->sku, &mic_data.sku_table[14]);
 
-	/* find and destroy skutable */
-	device_id = mic_ctx->bi_pdev->device;
-	sku_find(mic_ctx, device_id);
+	if (sku_create_node(251, 253, SKU_HIGH_MEM, FREQ_5P0, "C0-31S1P", &newnode))
+        return -ENOMEM;
+	list_add_tail(&newnode->sku, &mic_data.sku_table[14]);
 
-	sku_destroy_table();
+	if (sku_create_node(254, 255, SKU_HIGH_MEM, FREQ_5P0, "C0QS-31S1P", &newnode))
+        return -ENOMEM;
+	list_add_tail(&newnode->sku, &mic_data.sku_table[14]);
+
+	if (sku_create_node(256, 350, SKU_HIGH_MEM, FREQ_5P0, "C0PRQ-31S1P", &newnode))
+        return -ENOMEM;
+	list_add_tail(&newnode->sku, &mic_data.sku_table[14]);
+
+    return 0; // Successed
 }

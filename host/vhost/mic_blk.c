@@ -153,12 +153,20 @@ static void handle_io_work(struct work_struct *work)
 	  for (iov = vbio->iov; iov < &vbio->iov[vbio->nvecs]; iov++) {
 		iov->iov_base = mic_addr_in_host(aper_va, iov->iov_base);
 	  }
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,6,0)
+		ret = vfs_writev(vbio->file, vbio->iov, vbio->nvecs, &pos, 0);
+#else
 		ret = vfs_writev(vbio->file, vbio->iov, vbio->nvecs, &pos);
+#endif
 	} else {
 	  for (iov = vbio->iov; iov < &vbio->iov[vbio->nvecs]; iov++) {
 		iov->iov_base = mic_addr_in_host(aper_va, iov->iov_base);
 	  }
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,6,0)
+		ret = vfs_readv(vbio->file, vbio->iov, vbio->nvecs, &pos, 0);
+#else
 		ret = vfs_readv(vbio->file, vbio->iov, vbio->nvecs, &pos);
+#endif
 	}
 	status = (ret < 0) ? VIRTIO_BLK_S_IOERR : VIRTIO_BLK_S_OK;
 	if (vbio->head != -1) {
@@ -368,7 +376,7 @@ static void handle_blk(struct vhost_blk *blk)
 		head = vhost_get_vq_desc(&blk->dev, vq, vq->iov,
 					 ARRAY_SIZE(vq->iov),
 					 &out, &in, NULL, NULL);
-		if (head == vq->num) {
+		if ((head == vq->num) || (head == -EFAULT) || (head == -EINVAL)) {
 			if (unlikely(vhost_enable_notify(&blk->dev, vq))) {
 				vhost_disable_notify(&blk->dev, vq);
 				continue;
@@ -436,6 +444,8 @@ static long vhost_blk_set_backend(struct vhost_blk *vblk)
 	struct vb_shared *vb_shared;
 	int ret = 0;
 	struct kstat stat;
+	unsigned int virtio_blk_features = (1U << VIRTIO_BLK_F_SEG_MAX) |
+					   (1U << VIRTIO_BLK_F_BLK_SIZE);
 
 	if (index >= MAX_BOARD_SUPPORTED) {
 		ret = -ENOBUFS;
@@ -466,20 +476,15 @@ static long vhost_blk_set_backend(struct vhost_blk *vblk)
 	vq->log_addr = (u64)bd_info->bi_ctx.aper.va;
 
 	vb_shared = &((struct mic_virtblk *)bd_info->bi_virtio)->vb_shared;
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0))
-#else
-	writel(
-		   (1U << VIRTIO_BLK_F_SEG_MAX) |
-		   (1U << VIRTIO_BLK_F_BLK_SIZE) |
-		   (1U << VIRTIO_BLK_F_FLUSH),
-		   &vb_shared->host_features);
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0))
+	virtio_blk_features |= (1U << VIRTIO_BLK_F_FLUSH);
 #endif
+	writel(virtio_blk_features, &vb_shared->host_features);
 	writel(DISK_SEG_MAX, &vb_shared->blk_config.seg_max);
 	writel(SECTOR_SIZE, &vb_shared->blk_config.blk_size);
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0))
-	stat.size = (loff_t)0;  // CAZ TODO this is temportary until you fix this code.
-	stat.mode = (umode_t)0;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0))
+	ret = vfs_getattr(&vblk->virtblk_file->f_path, &stat);
 #else
 	ret = vfs_getattr(vblk->virtblk_file->f_path.mnt,
 					  vblk->virtblk_file->f_path.dentry, &stat);

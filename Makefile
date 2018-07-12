@@ -1,4 +1,4 @@
-# Copyright 2010-2016 Intel Corporation.
+# Copyright 2010-2017 Intel Corporation.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2,
@@ -42,8 +42,8 @@ export MPSS_BUILDNO := $(MPSS_BUILDNO)
 export MPSS_BUILTBY := $(shell echo "`whoami`@`uname -n`")
 export MPSS_BUILTON := $(shell date +'%F %T %z')
 
-KERNEL_VERSION := $(shell uname -r)
-KERNEL_SRC = /lib/modules/$(KERNEL_VERSION)/build
+KERNELRELEASE := $(shell uname -r)
+KERNEL_SRC = /lib/modules/$(KERNELRELEASE)/build
 
 INSTALL = install
 INSTALL_d = $(INSTALL) -d
@@ -54,21 +54,21 @@ prefix = /usr/local
 sysconfdir = $(prefix)/etc
 includedir = $(prefix)/include
 
-kmodinstalldir = /lib/modules/$(KERNEL_VERSION)
+kmodinstalldir = /lib/modules/$(KERNELRELEASE)
 kmodincludedir = $(realpath $(KERNEL_SRC))/include/modules
 
 # If building the host's driver for a MIC co-processor card, which card
 # $(ARCH) it should support
 export MIC_CARD_ARCH := k1om
 
-.PHONY: all install modules
+.PHONY: all install modules clean
 .PHONY: modules_install conf_install dev_install kdev_install
 
 all: modules
 
 install: modules_install conf_install kdev_install
 
-modules modules_install: %:
+modules modules_install clean: %:
 	$(MAKE) -C $(KERNEL_SRC) M=$(CURDIR) $* \
 		INSTALL_MOD_PATH=$(DESTDIR)
 

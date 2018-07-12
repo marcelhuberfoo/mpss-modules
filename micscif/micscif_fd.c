@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 Intel Corporation.
+ * Copyright 2010-2017 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -99,7 +99,7 @@ micscif_flush(struct file *f, fl_owner_t id)
 	struct endpt *ep;
 
 	priv = (struct mic_priv *)f->private_data;
-	dev = file_inode(f)->i_rdev;
+	dev = f->f_path.dentry->d_inode->i_rdev;
 	if (MINOR(dev) != 1) // SCIF MINOR
 		return 0;
 

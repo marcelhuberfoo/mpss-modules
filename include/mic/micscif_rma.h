@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 Intel Corporation.
+ * Copyright 2010-2017 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -56,7 +56,7 @@
 #include <linux/vmalloc.h>
 #include <asm/io.h>
 #include <linux/kernel.h>
-#include <linux/mm_types.h>
+#include <linux/sched/mm.h>
 #include <linux/jiffies.h>
 #include <linux/timer.h>
 #include <linux/irqflags.h>
@@ -65,7 +65,7 @@
 #include <linux/mutex.h>
 #include <linux/semaphore.h>
 #include <linux/kthread.h>
-#include <linux/sched.h>
+#include <linux/sched/signal.h>
 #include <linux/delay.h>
 #include <linux/wait.h>
 #include <asm/bug.h>
