@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 Intel Corporation.
+ * Copyright 2010-2017 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -287,9 +287,16 @@ micscif_p2p_mapsg(void *va, int page_size, int page_cnt)
 	sg_init_table(sg, page_cnt);
 
 	for (i = 0; i < page_cnt; i++) {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0))
+		phys_addr_t phys;
+		phys = slow_virt_to_phys(va);
+
+		if ((page = pfn_to_page(phys >> PAGE_SHIFT)) == NULL)
+			goto p2p_sg_err;
+#else
 		if ((page = vmalloc_to_page(va)) == NULL) 
 			goto p2p_sg_err;
-
+#endif
 		sg_set_page(&sg[i], page, page_size, 0);
 		va += page_size;
 	}

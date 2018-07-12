@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 Intel Corporation.
+ * Copyright 2010-2017 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -887,7 +887,7 @@ micscif_get_activeset(uint32_t node_id, uint8_t *nodemask)
 	int status = 0;
 	uint32_t i = 0;
 	struct list_head	stack;
-	uint8_t *visited = NULL;
+	uint8_t visited[128] = {0}; // 128 is max number of nodes.
 	uint32_t num_nodes = ms_info.mi_maxid + 1;
 	mic_ctx_t *mic_ctx;
 
@@ -899,13 +899,6 @@ micscif_get_activeset(uint32_t node_id, uint8_t *nodemask)
 	status = init_depgraph_stack(&stack);
 	if (status) {
 		pr_debug("%s failed to initilize depgraph stack\n", __func__);
-		goto exit;
-	}
-
-	visited = kzalloc(sizeof(uint8_t) * num_nodes, GFP_KERNEL);
-	if (!visited) {
-		pr_debug("%s failed to allocated memory for visited array", __func__);
-		status = -ENOMEM;
 		goto exit;
 	}
 
@@ -947,9 +940,6 @@ micscif_get_activeset(uint32_t node_id, uint8_t *nodemask)
 		}
 	} /* end of while (!is_stack_empty(&stack)) */
 exit:
-	if (visited) {
-		kfree(visited);
-	}
 	uninit_depgraph_stack(&stack);
 	return status;
 }

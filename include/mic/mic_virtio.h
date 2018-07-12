@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 Intel Corporation.
+ * Copyright 2010-2017 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -44,12 +44,15 @@
 #define MIC_VIRTIO_H
 
 struct vb_shared {
-	struct virtio_blk_config blk_config;
 	uint32_t host_features;
 	uint32_t client_features;
 	bool update;
 	struct vring vring;
-};
+	struct virtio_blk_config blk_config;
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0))
+	uint32_t unused;
+#endif
+} __attribute__((aligned(8)));
 
 struct mic_virtblk {
 #ifdef HOST

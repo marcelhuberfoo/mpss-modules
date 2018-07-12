@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 Intel Corporation.
+ * Copyright 2010-2017 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2,
@@ -355,7 +355,10 @@ static int micscif_rma_list_dma_copy_unaligned(struct mic_copy_work *work, uint8
 					return ret;
 				}
 			} else {
-				ret = do_dma(chan, 0, temp_dma_addr, window_dma_addr,
+				int flags = 0;
+				if (remaining_len == loop_len + L1_CACHE_BYTES)
+					flags = DO_DMA_POLLING;
+				ret = do_dma(chan, flags, temp_dma_addr, window_dma_addr,
 						loop_len, NULL);
 			}
 		} else {
@@ -595,7 +598,10 @@ static int micscif_rma_list_dma_copy_aligned(struct mic_copy_work *work, struct 
 				return ret;
 			}
 		} else {
-			ret = do_dma(chan, 0, src_dma_addr, dst_dma_addr,
+			int flags = 0;
+			if (remaining_len == loop_len + L1_CACHE_BYTES)
+				flags = DO_DMA_POLLING;
+			ret = do_dma(chan, flags, src_dma_addr, dst_dma_addr,
 					loop_len, NULL);
 			if (ret < 0) {
 				printk(KERN_ERR "%s %d Desc Prog Failed ret %d\n", 
