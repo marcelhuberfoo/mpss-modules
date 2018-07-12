@@ -1981,15 +1981,28 @@ retry:
 			}
 		}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,6,0)
+		pinned_pages->nr_pages = get_user_pages_remote(
+#else
 		pinned_pages->nr_pages = get_user_pages(
+#endif
 				current,
 				mm,
 				(uint64_t)addr,
 				nr_pages,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0)
+				FOLL_WRITE,
+#else
 				!!(prot & SCIF_PROT_WRITE),
 				0,
+#endif
 				pinned_pages->pages,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,10,0)
+				pinned_pages->vma,
+				NULL);
+#else
 				pinned_pages->vma);
+#endif
 		up_write(&mm->mmap_sem);
 		if (nr_pages == pinned_pages->nr_pages) {
 #ifdef RMA_DEBUG
@@ -2007,7 +2020,11 @@ retry:
 				/* Roll back any pinned pages */
 				for (i = 0; i < pinned_pages->nr_pages; i++) {
 					if (pinned_pages->pages[i])
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,6,0)
+						put_page(pinned_pages->pages[i]);
+#else
 						page_cache_release(pinned_pages->pages[i]);
+#endif
 				}
 				prot &= ~SCIF_PROT_WRITE;
 				try_upgrade = false;

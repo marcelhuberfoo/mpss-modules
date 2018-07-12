@@ -413,7 +413,11 @@ int micscif_destroy_pinned_pages(struct scif_pinned_pages *pinned_pages)
 				BUG_ON(!page_count(pinned_pages->pages[j]));
 				BUG_ON(atomic_long_sub_return(1, &ms_info.rma_pin_cnt) < 0);
 #endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,6,0)
+				put_page(pinned_pages->pages[j]);
+#else
 				page_cache_release(pinned_pages->pages[j]);
+#endif
 			}
 		}
 	}

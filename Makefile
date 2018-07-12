@@ -42,8 +42,8 @@ export MPSS_BUILDNO := $(MPSS_BUILDNO)
 export MPSS_BUILTBY := $(shell echo "`whoami`@`uname -n`")
 export MPSS_BUILTON := $(shell date +'%F %T %z')
 
-KERNEL_VERSION := $(shell uname -r)
-KERNEL_SRC = /lib/modules/$(KERNEL_VERSION)/build
+KERNELRELEASE := $(shell uname -r)
+KERNEL_SRC = /lib/modules/$(KERNELRELEASE)/build
 
 INSTALL = install
 INSTALL_d = $(INSTALL) -d
@@ -54,7 +54,7 @@ prefix = /usr/local
 sysconfdir = $(prefix)/etc
 includedir = $(prefix)/include
 
-kmodinstalldir = /lib/modules/$(KERNEL_VERSION)
+kmodinstalldir = /lib/modules/$(KERNELRELEASE)
 kmodincludedir = $(realpath $(KERNEL_SRC))/include/modules
 
 # If building the host's driver for a MIC co-processor card, which card

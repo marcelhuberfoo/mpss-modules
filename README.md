@@ -1,8 +1,16 @@
-Intel MPSS 3.8.2 for Linux
-==========================
+Intel MPSS 3.8.2 for Linux <= 4.10.x
+====================================
 
-This repository contains Intel MPSS 3.8.2 modules. The source is patched to work
-with recent Linux kernel versions and are tested on an Ubuntu 14.04.
+This repository contains Intel MPSS 3.8.2 modules.
+The source is patched to work with Linux Kernels up to 4.10.x.
+It was tested using Kernel version 4.10.13 (not tested with newer kernel versions).
+
+Requirements
+------------
+
+Before building the kernel modules, make sure you have all tools necessary to
+build the Linux Kernel (e.g., GCC, Make, etc.) and the kernel source or
+headers.
 
 Building and Installing
 -----------------------

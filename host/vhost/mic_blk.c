@@ -153,12 +153,20 @@ static void handle_io_work(struct work_struct *work)
 	  for (iov = vbio->iov; iov < &vbio->iov[vbio->nvecs]; iov++) {
 		iov->iov_base = mic_addr_in_host(aper_va, iov->iov_base);
 	  }
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,6,0)
+		ret = vfs_writev(vbio->file, vbio->iov, vbio->nvecs, &pos, 0);
+#else
 		ret = vfs_writev(vbio->file, vbio->iov, vbio->nvecs, &pos);
+#endif
 	} else {
 	  for (iov = vbio->iov; iov < &vbio->iov[vbio->nvecs]; iov++) {
 		iov->iov_base = mic_addr_in_host(aper_va, iov->iov_base);
 	  }
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,6,0)
+		ret = vfs_readv(vbio->file, vbio->iov, vbio->nvecs, &pos, 0);
+#else
 		ret = vfs_readv(vbio->file, vbio->iov, vbio->nvecs, &pos);
+#endif
 	}
 	status = (ret < 0) ? VIRTIO_BLK_S_IOERR : VIRTIO_BLK_S_OK;
 	if (vbio->head != -1) {
